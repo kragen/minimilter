@@ -41,7 +41,7 @@ class smfir:
     reject, tempfail, replycode = 'rty'
 
 
-## Decoding packet contents.
+## Decoding packet contents: generic data handling.
 
 # `dispatch_message` looks for a decoder it can call with the packet
 # data and get back an args tuple to apply the appropriate method to.
@@ -108,6 +108,9 @@ ok((uint32+uint32+uint32).encode((3,4,6)), '\0\0\0\3\0\0\0\4\0\0\0\6')
 ok((uint32 + remaining).decode("\0\0\0\4boo"), (4, "boo"))
 ok((uint32 + remaining).encode((4, "boo")), "\0\0\0\4boo")
 
+
+## Decoding packet contents: milter protocol data formats.
+
 smfic_optneg_format = uint32 + uint32 + uint32
 
 class Milter:
@@ -173,7 +176,7 @@ def parse_packet(buffer):
 ok(parse_packet('\0\0\0\4abcde'), ('abcd', 'e'))
 
 
-## Top level control of milter protocol.
+## Control flow of milter protocol.
 
 def loop(input, output, milter_factory):
     "Run one or more milters against abstract input and output."
