@@ -47,47 +47,47 @@ class smfir:
 # data and get back an args tuple to apply the appropriate method to.
 # Parser objects are fancy functions that have a "+" method that lets
 # you concatenate them.
-# XXX make asciz_multiple a Parser?
-
-def asciz_multiple(astr):
-    "Extract a bunch of null-terminated strings, in a list, in a tuple."
-    return (astr.split('\0')[:-1],)
-
-ok(asciz_multiple("asdf\0fd\0c\0"), (['asdf', 'fd', 'c'],))
 
 class Parser:
     "Base class for parsing objects."
     def __add__(self, other):
         return Concat(self, other)
 
+class Remaining(Parser):
+    """Sucks up remaining data as a string."""
+    def width(self, val): return len(val)
+    def decode(self, val): return (val,)
+remaining = Remaining()
+
+class AscizMultiple(Remaining):
+    "Parses a bunch of null-terminated strings as a string list."
+    def decode(self, val):
+        return (val.split('\0')[:-1],)
+asciz_multiple = AscizMultiple()
+
+ok(asciz_multiple.decode("asdf\0fd\0c\0"), (['asdf', 'fd', 'c'],))
+
 class Concat(Parser):
     """Parses the concatenation of two data structures."""
     def __init__(self, a, b):
         self.a, self.b = a, b
-    def __call__(self, val):
+    def decode(self, val):
         width = self.a.width(val)
-        return self.a(val[:width]) + self.b(val[width:])
+        return self.a.decode(val[:width]) + self.b.decode(val[width:])
     def width(self, val):
         awidth = self.a.width(val)
         return awidth + self.b.width(val[awidth:])
 
 class _uint32(Parser):
-    def __call__(self, val):
+    def decode(self, val):
         return struct.unpack('>L', val)
     def width(self, val): return 4
 uint32 = _uint32()
 
-ok(uint32('\0\0\0\3'), (3,))
-ok((uint32+uint32)('\0\0\0\3\0\0\0\4'), (3,4))
-ok((uint32+uint32+uint32)('\0\0\0\3\0\0\0\4\0\0\0\6'), (3,4,6))
-
-class _remaining(Parser):
-    """Sucks up remaining data as a string."""
-    def width(self, val): return len(val)
-    def __call__(self, val): return (val,)
-remaining = _remaining()
-
-ok((uint32 + remaining)("\0\0\0\4boo"), (4, "boo"))
+ok(uint32.decode('\0\0\0\3'), (3,))
+ok((uint32+uint32).decode('\0\0\0\3\0\0\0\4'), (3,4))
+ok((uint32+uint32+uint32).decode('\0\0\0\3\0\0\0\4\0\0\0\6'), (3,4,6))
+ok((uint32 + remaining).decode("\0\0\0\4boo"), (4, "boo"))
 
 class Milter:
     """An abstract base milter."""
@@ -126,7 +126,7 @@ def dispatch_message(milter, message):
            'O': 'smfic_optneg'}
     selector = map.get(command_code)
     if selector is None: return smfir.continue_
-    args = decoders[selector](message[1:])
+    args = decoders[selector].decode(message[1:])
     return getattr(milter, selector)(*args)
 
 ok(dispatch_message(Milter(), 'O\0\0\0\2\0\0\0\x3f\0\0\0\x7f'),
@@ -142,7 +142,7 @@ def parse_packet(buffer):
     Returns (packetbody, remainingdata) tuple, or raises
     Incomplete.
     """
-    length, contents = (uint32 + remaining)(buffer)
+    length, contents = (uint32 + remaining).decode(buffer)
     if len(contents) < length: raise Incomplete
     return (contents[:length], contents[length:])
 
