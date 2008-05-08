@@ -1,71 +1,83 @@
-got '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00?\x00\x00\x00\x7f\x00\x00\x00\rO\x00\x00\x00\x03\x00\x00\x00?\x00\x00\x00\x7f\x00\x00\x00\x01Q'
-spitting out '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'
-spitting out '\x00\x00\x00\rO\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00'
-got ''
-got '\x00\x00\x00\x01'
-got ''
+Here's the debug dump from a test connection from Postfix.  The "got
+'...'" and "responding with '...'" lines contain all the data that
+went over the socket; the rest of the debug dump lines explain some
+other internal processing.
+
+The milter is rejecting the attempt to send the mail to root.
+
 listening on ('127.0.0.1', 1234)
 got '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00=\x00\x00\x00\x7f'
-spitting out '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'
+message 'O', 'O\x00\x00\x00\x02\x00\x00\x00=\x00\x00\x00\x7f'
+got message 'O' => smfic_optneg(2L, 61L, 127L)
+responding with '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'
 got '\x00\x00\x00VDCj\x00watchdog-qemu-image.local\x00{daemon_name}\x00watchdog-qemu-image.local\x00v\x00Postfix 2.3.8\x00\x00\x00\x00\x18Clocalhost\x004\x00\x00127.0.0.1\x00'
-spitting out 'c'
-spitting out 'c'
-KeyboardInterrupt
-Python 2.4.4: /usr/bin/python
-Thu May  8 12:18:22 2008
-
-A problem occurred in a Python script.  Here is the sequence of
-function calls leading up to the error, in the order they occurred.
-
- /root/minimilter.py 
-  299         print "usage: %s <mapfile> <portnum>" % (sys.argv[0])
-  300     else:
-  301         recipmap = eval(file(sys.argv[1]).read())
-  302         threaded_server(int(sys.argv[2]),
-  303                         lambda: RecipMapMilter(recipmap))
-RecipMapMilter = <class __main__.RecipMapMilter>
-recipmap = {'<root@watchdog-qemu-image.local>': ['<special@watchdog-qemu-image.local>']}
-
- /root/minimilter.py in threaded_server(port=1234, milter_factory=<function <lambda>>)
-  260 
-  261     while 1:
-  262         (conn, addr) = sock.accept()
-  263         # XXX is there a chance of resource exhaustion here?
-  264         thread.start_new_thread(socket_loop, (conn, milter_factory))
-conn undefined
-addr = ('127.0.0.1', 2654)
-sock = <socket._socketobject object>
-sock.accept = <bound method _socketobject.accept of <socket._socketobject object>>
-
- /root/socket.py in accept(self=<socket._socketobject object>)
-  159 
-  160     def accept(self):
-  161         sock, addr = self._sock.accept()
-  162         return _socketobject(_sock=sock), addr
-  163     accept.__doc__ = _realsocket.accept.__doc__
-sock undefined
-addr undefined
-self = <socket._socketobject object>
-self._sock = <socket object, fd=3, family=2, type=1, protocol=0>
-self._sock.accept = <built-in method accept of _socket.socket object>
-KeyboardInterrupt: 
-    __doc__ = 'Program interrupted by user.'
-    __getitem__ = <bound method KeyboardInterrupt.__getitem__ of <exceptions.KeyboardInterrupt instance>>
-    __init__ = <bound method KeyboardInterrupt.__init__ of <exceptions.KeyboardInterrupt instance>>
-    __module__ = 'exceptions'
-    __str__ = <bound method KeyboardInterrupt.__str__ of <exceptions.KeyboardInterrupt instance>>
-    args = ()
-
-The above is a description of an error in a Python program.  Here is
-the original traceback:
-
-Traceback (most recent call last):
-  File "./minimilter.py", line 303, in ?
-    lambda: RecipMapMilter(recipmap))
-  File "./minimilter.py", line 262, in threaded_server
-    (conn, addr) = sock.accept()
-  File "socket.py", line 161, in accept
-    sock, addr = self._sock.accept()
-KeyboardInterrupt
-
-
+message 'D', 'DCj\x00watchdog-qemu-image.local\x00{daemon_name}\x00watchdog-qemu-image.local\x00v\x00Postfix 2.3.8\x00'
+responding with ''
+message 'C', 'Clocalhost\x004\x00\x00127.0.0.1\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x02DH\x00\x00\x00\x07Hthere\x00'
+message 'D', 'DH'
+responding with ''
+message 'H', 'Hthere\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x14DM{mail_addr}\x00creep\x00\x00\x00\x00\tM<creep>\x00'
+message 'D', 'DM{mail_addr}\x00creep\x00'
+responding with ''
+message 'M', 'M<creep>\x00'
+got message 'M' => smfic_mail(['<creep>'],)
+sender is <creep>
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x004DR{rcpt_addr}\x00watchdogdev@watchdog-qemu-image.local\x00\x00\x00\x00)R<watchdogdev@watchdog-qemu-image.local>\x00'
+message 'D', 'DR{rcpt_addr}\x00watchdogdev@watchdog-qemu-image.local\x00'
+responding with ''
+message 'R', 'R<watchdogdev@watchdog-qemu-image.local>\x00'
+got message 'R' => smfic_rcpt(['<watchdogdev@watchdog-qemu-image.local>'],)
+recipient is <watchdogdev@watchdog-qemu-image.local>
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00:DRi\x00B8D4918008\x00{rcpt_addr}\x00root@watchdog-qemu-image.local\x00\x00\x00\x00"R<root@watchdog-qemu-image.local>\x00'
+message 'D', 'DRi\x00B8D4918008\x00{rcpt_addr}\x00root@watchdog-qemu-image.local\x00'
+responding with ''
+message 'R', 'R<root@watchdog-qemu-image.local>\x00'
+got message 'R' => smfic_rcpt(['<root@watchdog-qemu-image.local>'],)
+recipient is <root@watchdog-qemu-image.local>
+responding with '\x00\x00\x00\x01r'
+got '\x00\x00\x00\x0fDLi\x00B8D4918008\x00\x00\x00\x00&LFrom\x00creep@watchdog-qemu-image.local\x00'
+message 'D', 'DLi\x00B8D4918008\x00'
+responding with ''
+message 'L', 'LFrom\x00creep@watchdog-qemu-image.local\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x0fDLi\x00B8D4918008\x00\x00\x00\x00KLTo\x00watchdogdev@watchdog-qemu-image.local,\n\troot@watchdog-qemu-image.local\x00'
+message 'D', 'DLi\x00B8D4918008\x00'
+responding with ''
+message 'L', 'LTo\x00watchdogdev@watchdog-qemu-image.local,\n\troot@watchdog-qemu-image.local\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x0fDLi\x00B8D4918008\x00\x00\x00\x00BLMessage-Id\x00<20080508205701.B8D4918008@watchdog-qemu-image.local>\x00'
+message 'D', 'DLi\x00B8D4918008\x00'
+responding with ''
+message 'L', 'LMessage-Id\x00<20080508205701.B8D4918008@watchdog-qemu-image.local>\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x0fDLi\x00B8D4918008\x00\x00\x00\x00,LDate\x00Thu,  8 May 2008 13:56:51 -0700 (PDT)\x00'
+message 'D', 'DLi\x00B8D4918008\x00'
+responding with ''
+message 'L', 'LDate\x00Thu,  8 May 2008 13:56:51 -0700 (PDT)\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x0fDNi\x00B8D4918008\x00\x00\x00\x00\x01N'
+message 'D', 'DNi\x00B8D4918008\x00'
+responding with ''
+message 'N', 'N'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x0fDBi\x00B8D4918008\x00\x00\x00\x00\x10Btihs si amil!\r\n'
+message 'D', 'DBi\x00B8D4918008\x00'
+responding with ''
+message 'B', 'Btihs si amil!\r\n'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x0fDEi\x00B8D4918008\x00\x00\x00\x00\x01E'
+message 'D', 'DEi\x00B8D4918008\x00'
+responding with ''
+message 'E', 'E'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x01A\x00\x00\x00\x01A\x00\x00\x00\x01Q'
+message 'A', 'A'
+message 'A', 'A'
+message 'Q', 'Q'
+connection closed
