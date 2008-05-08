@@ -27,7 +27,12 @@ I implemented this in three hours one morning.
 import struct, sys, thread, socket, cgitb
 cgitb.enable(format='text')
 
-## basic constants.
+def ok(a, b):
+    "One-line unit testing function."
+    assert a == b, (a, b)
+
+
+## Basic constants.
 
 class smfir:
     """Namespace for reply codes."""
@@ -35,15 +40,19 @@ class smfir:
     discard, addheader, chgheader, progress, quarantine = 'dhmpq'
     reject, tempfail, replycode = 'rty'
 
+
 ## Decoding packet contents.
+
+# `dispatch_message` looks for a decoder it can call with the packet
+# data and get back an args tuple to apply the appropriate method to.
+# Parser objects are fancy functions that have a "+" method that lets
+# you concatenate them.
+# XXX make asciz_multiple a Parser?
 
 def asciz_multiple(astr):
     "Extract a bunch of null-terminated strings, in a list, in a tuple."
     return (astr.split('\0')[:-1],)
 
-def ok(a, b):
-    "One-line unit testing function."
-    assert a == b, (a, b)
 ok(asciz_multiple("asdf\0fd\0c\0"), (['asdf', 'fd', 'c'],))
 
 class Parser:
@@ -78,14 +87,13 @@ class _remaining(Parser):
     def __call__(self, val): return (val,)
 remaining = _remaining()
 
+ok((uint32 + remaining)("\0\0\0\4boo"), (4, "boo"))
+
 class Milter:
     """An abstract base milter."""
     def smfic_optneg(self, version, actions, protocol):
         "Option negotiation."
         return 'O' + struct.pack('>LLL', version, 0, 0)
-
-
-ok((uint32 + remaining)("\0\0\0\4boo"), (4, "boo"))
 
 decoders = {
     'smfic_mail': asciz_multiple,
@@ -109,6 +117,7 @@ def dispatch_message(milter, message):
     """
     command_code = message[0]  # XXX: 0-length message?
 
+    # XXX move these into the Milter object?
     if command_code == 'A': raise Abort # XXX: do the same for SMFIC_BODYEOB?
     if command_code == 'Q': raise Quit
 
@@ -133,6 +142,9 @@ def parse_packet(buffer):
     length, contents = (uint32 + remaining)(buffer)
     if len(contents) < length: raise Incomplete
     return (contents[:length], contents[length:])
+
+
+## Top level control of milter protocol.
 
 def loop(input, output, milter_factory):
     "Run one or more milters against abstract input and output."
@@ -177,6 +189,7 @@ def threaded_server(port, milter_factory):
         thread.start_new_thread(socket_loop, (conn, milter_factory))
         del conn                        # for GC
 
+
 ## My specific milter.
 # Eventually this should go into a file of its own.
 
@@ -208,7 +221,7 @@ class RecipMapMilter(Milter):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print "usage: minimilter.py <mapfile> <portnum>"
+        print "usage: %s <mapfile> <portnum>" % (sys.argv[0])
     else:
         recipmap = eval(file(sys.argv[1]).read())
         threaded_server(int(sys.argv[2]),
