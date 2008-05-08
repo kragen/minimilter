@@ -129,6 +129,9 @@ def dispatch_message(milter, message):
     args = decoders[selector](message[1:])
     return getattr(milter, selector)(*args)
 
+ok(dispatch_message(Milter(), 'O\0\0\0\2\0\0\0\x3f\0\0\0\x7f'),
+   'O' '\0\0\0\2' '\0\0\0\0' '\0\0\0\0')
+
 class Incomplete(Exception):
     "Raised when you try to parse an incomplete packet."
 
