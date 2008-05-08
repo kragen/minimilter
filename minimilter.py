@@ -155,7 +155,11 @@ def dispatch_message(milter, message):
     XXX should this move into the Milter class?
 
     """
-    command_code = message[0]  # XXX: 0-length message?
+    # XXX I think the handling of zero-length messages here is okay:
+    # The exception propagates up the stack and kills the milter
+    # server thread, and hopefully gets logged.  The same thing
+    # happens if a decoder below raises Incomplete.
+    command_code = message[0]
 
     # XXX move these into the Milter object?
     if command_code == smfic.abort:
