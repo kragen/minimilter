@@ -48,12 +48,12 @@ class smfir:
 # Parser objects are fancy functions that have a "+" method that lets
 # you concatenate them.
 
-class Parser:
+class Format:
     "Base class for parsing objects."
     def __add__(self, other):
         return Concat(self, other)
 
-class Remaining(Parser):
+class Remaining(Format):
     """Sucks up remaining data as a string."""
     def width(self, val): return len(val)
     def decode(self, val): return (val,)
@@ -67,7 +67,7 @@ asciz_multiple = AscizMultiple()
 
 ok(asciz_multiple.decode("asdf\0fd\0c\0"), (['asdf', 'fd', 'c'],))
 
-class Concat(Parser):
+class Concat(Format):
     """Parses the concatenation of two data structures."""
     def __init__(self, a, b):
         self.a, self.b = a, b
@@ -78,7 +78,7 @@ class Concat(Parser):
         awidth = self.a.width(val)
         return awidth + self.b.width(val[awidth:])
 
-class _uint32(Parser):
+class _uint32(Format):
     def decode(self, val):
         return struct.unpack('>L', val)
     def width(self, val): return 4
