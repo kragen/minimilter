@@ -46,6 +46,7 @@ class smfir:
 class smfic:
     """Namespace for command codes."""
     mail, rcpt, optneg, quit, abort = 'MROQA'
+    macro = 'D'
 
 
 ## Decoding packet contents: generic data handling.
@@ -163,6 +164,8 @@ def _dispatch_message(milter, message):
         raise Abort # XXX: do the same for SMFIC_BODYEOB?
     if command_code == smfic.quit:
         raise Quit
+    if command_code == smfic.macro:
+        return []
 
     map = {smfic.mail: 'smfic_mail',
            smfic.rcpt: 'smfic_rcpt',
@@ -181,7 +184,9 @@ def dispatch_message(milter, message):
     XXX should this move into the Milter class?
 
     """
-    return empacketize(_dispatch_message(milter, message))
+    response = _dispatch_message(milter, message)
+    if not isinstance(response, list): response = [response]
+    return ''.join(map(empacketize, response))
 
 ok(smfic.optneg, 'O')
 ok(dispatch_message(Milter(), 'O' '\0\0\0\2' '\0\0\0\x3f' '\0\0\0\x7f'),
@@ -257,8 +262,15 @@ _testresponses = []
 loop(StringIO.StringIO(_realdata).read, _testresponses.append, Milter)
 ok(_testresponses, [
     empacketize(smfic.optneg + smfic_optneg_format.encode((2, 0, 0))),
-    empacketize(smfir.continue_),
+    '',                # no response for D (macro definition) messages
     empacketize(smfir.continue_)])
+
+# test for commands with default handling (again, real data from Postfix)
+_realdata2 = '\x00\x00\x00\x02DH\x00\x00\x00\x1aHthis-is-my-helo-hostname\x00'
+_testresponses = []
+loop(StringIO.StringIO(_realdata2).read, _testresponses.append, Milter)
+ok(_testresponses, ['', empacketize(smfir.continue_)])
+
 
 def socket_loop(sock, milter_factory):
     "Run one or more milters on an open socket connection."
