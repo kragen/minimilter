@@ -31,6 +31,9 @@ def ok(a, b):
     "One-line unit testing function."
     assert a == b, (a, b)
 
+def debug(msg): print msg
+def debug(msg): pass
+
 
 ## Basic constants.
 
@@ -147,19 +150,13 @@ packet_format = uint32 + remaining
 def empacketize(val):
     return packet_format.encode((len(val), val))
 
-def dispatch_message(milter, message):
-    """Parse a message from the MTA and get a response from the milter.
-
-    The message should already have its initial `len` field removed.
-
-    XXX should this move into the Milter class?
-
-    """
+def _dispatch_message(milter, message):
     # XXX I think the handling of zero-length messages here is okay:
     # The exception propagates up the stack and kills the milter
     # server thread, and hopefully gets logged.  The same thing
     # happens if a decoder below raises Incomplete.
     command_code = message[0]
+    debug("message %r, %r" % (command_code, message))
 
     # XXX move these into the Milter object?
     if command_code == smfic.abort:
@@ -173,8 +170,18 @@ def dispatch_message(milter, message):
     selector = map.get(command_code)
     if selector is None: return smfir.continue_
     args = decoders[selector].decode(message[1:])
-    #print "got message %r => %s%s" % (command_code, selector, args)
-    return empacketize(getattr(milter, selector)(*args))
+    debug("got message %r => %s%s" % (command_code, selector, args))
+    return getattr(milter, selector)(*args)
+
+def dispatch_message(milter, message):
+    """Parse a message from the MTA and get a response from the milter.
+
+    The message should already have its initial `len` field removed.
+
+    XXX should this move into the Milter class?
+
+    """
+    return empacketize(_dispatch_message(milter, message))
 
 ok(smfic.optneg, 'O')
 ok(dispatch_message(Milter(), 'O' '\0\0\0\2' '\0\0\0\x3f' '\0\0\0\x7f'),
@@ -239,6 +246,17 @@ ok(_testresponses, [
 loop(StringIO.StringIO("").read, "expect no responses", Milter)
 loop(StringIO.StringIO("\0\0\0\1").read, "expect no responses", Milter)
 
+# A test with real data from Postfix 2.3.8-2+b1
+_realdata = ('\0\0\0\rO\0\0\0\x02\0\0\0=\0\0\0\x7f'
+             '\0\0\0VDCj\0watchdog-qemu-image.local\0{daemon_name}\0'
+             'watchdog-qemu-image.local\0v\0Postfix 2.3.8\0'
+             '\x00\x00\x00\x18Clocalhost\x004\x00\x00127.0.0.1\x00')
+_testresponses = []
+loop(StringIO.StringIO(_realdata).read, _testresponses.append, Milter)
+ok(_testresponses, [
+    empacketize(smfic.optneg + smfic_optneg_format.encode((2, 0, 0))),
+    empacketize(smfir.continue_),
+    empacketize(smfir.continue_)])
 
 def socket_loop(sock, milter_factory):
     "Run one or more milters on an open socket connection."
