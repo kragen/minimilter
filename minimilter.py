@@ -24,7 +24,7 @@ I implemented this in three hours one morning.
 
 """
 
-import struct, sys, thread, socket, cgitb
+import struct, sys, thread, socket, cgitb, StringIO
 cgitb.enable(format='text')
 
 def ok(a, b):
@@ -51,6 +51,8 @@ class smfir:
 
 class TooManyValues(Exception):
     "Signals that you've asked a Format to encode more things than it can."
+class Incomplete(Exception):
+    "Raised when you try to parse an incomplete data structure."
 
 class Format:
     "Base class for parsing objects."
@@ -95,7 +97,10 @@ class Concat(Format):
 
 class _uint32(Format):
     def decode(self, val):
-        return struct.unpack('>L', val)
+        try:
+            return struct.unpack('>L', val)
+        except struct.error, e:
+            raise Incomplete(e)
     def width(self, val): return 4
     def partial_encode(self, args):
         return struct.pack('>L', args[0]), args[1:]
@@ -154,13 +159,11 @@ def dispatch_message(milter, message):
     selector = map.get(command_code)
     if selector is None: return smfir.continue_
     args = decoders[selector].decode(message[1:])
+    #print "got message %r => %s%s" % (command_code, selector, args)
     return empacketize(getattr(milter, selector)(*args))
 
 ok(dispatch_message(Milter(), 'O' '\0\0\0\2' '\0\0\0\x3f' '\0\0\0\x7f'),
    '\0\0\0\x0d' 'O' '\0\0\0\2' '\0\0\0\0' '\0\0\0\0')
-
-class Incomplete(Exception):
-    "Raised when you try to parse an incomplete packet."
 
 def parse_packet(buffer):
     """Given buffer contents, split off a complete packet
@@ -169,8 +172,11 @@ def parse_packet(buffer):
     Returns (packetbody, remainingdata) tuple, or raises
     Incomplete.
     """
+    # It's a little misleading that we use packet_format here --- the
+    # actual packet may end before the end of the buffer.
     length, contents = packet_format.decode(buffer)
     if len(contents) < length: raise Incomplete
+    # So we slice it here.
     return (contents[:length], contents[length:])
 
 ok(parse_packet('\0\0\0\4abcde'), ('abcd', 'e'))
@@ -183,11 +189,11 @@ def loop(input, output, milter_factory):
     buf = ""
     milter = milter_factory()
     while 1:
-        buf += input(4096)  # XXX BUG: there might already be a full message
-
         try:
             message, buf = parse_packet(buf)
         except Incomplete:
+            buf += input(4096)
+            # XXX what about unexpected EOF?
             continue
 
         try:
@@ -198,6 +204,15 @@ def loop(input, output, milter_factory):
             return
         else:
             output(answer)
+
+_testresponses = []
+source = StringIO.StringIO(
+    empacketize("O" + smfic_optneg_format.encode((2, 0x3f, 0x7f))) +
+    empacketize("O" + smfic_optneg_format.encode((3, 0x3f, 0x7f))) +
+    empacketize("Q"))
+loop(source.read, _testresponses.append, Milter)
+ok(_testresponses, [empacketize("O" + smfic_optneg_format.encode((2, 0, 0))),
+                    empacketize("O" + smfic_optneg_format.encode((3, 0, 0)))])
 
 def socket_loop(sock, milter_factory):
     "Run one or more milters on an open socket connection."
