@@ -45,24 +45,35 @@ class smfir:
 
 # `dispatch_message` looks for a decoder it can call with the packet
 # data and get back an args tuple to apply the appropriate method to.
-# Parser objects are fancy functions that have a "+" method that lets
-# you concatenate them.
+# Format objects represent binary data formats; they have a "+" method
+# that lets you concatenate them, and you can .encode() or .decode()
+# to convert between tuples and binary data.
+
+class TooManyValues(Exception):
+    "Signals that you've asked a Format to encode more things than it can."
 
 class Format:
     "Base class for parsing objects."
     def __add__(self, other):
         return Concat(self, other)
+    def encode(self, args):
+        encoded, extra = self.partial_encode(args)
+        if extra: raise TooManyValues
+        return encoded
 
 class Remaining(Format):
     """Sucks up remaining data as a string."""
     def width(self, val): return len(val)
     def decode(self, val): return (val,)
+    def partial_encode(self, args):
+        return args[0], args[1:]
 remaining = Remaining()
 
 class AscizMultiple(Remaining):
     "Parses a bunch of null-terminated strings as a string list."
     def decode(self, val):
         return (val.split('\0')[:-1],)
+    def partial_encode(self, args): raise "Unimplemented"
 asciz_multiple = AscizMultiple()
 
 ok(asciz_multiple.decode("asdf\0fd\0c\0"), (['asdf', 'fd', 'c'],))
@@ -77,34 +88,48 @@ class Concat(Format):
     def width(self, val):
         awidth = self.a.width(val)
         return awidth + self.b.width(val[awidth:])
+    def partial_encode(self, args):
+        a_encoded, a_extra = self.a.partial_encode(args)
+        b_encoded, b_extra = self.b.partial_encode(a_extra)
+        return a_encoded + b_encoded, b_extra
 
 class _uint32(Format):
     def decode(self, val):
         return struct.unpack('>L', val)
     def width(self, val): return 4
+    def partial_encode(self, args):
+        return struct.pack('>L', args[0]), args[1:]
 uint32 = _uint32()
 
 ok(uint32.decode('\0\0\0\3'), (3,))
 ok((uint32+uint32).decode('\0\0\0\3\0\0\0\4'), (3,4))
 ok((uint32+uint32+uint32).decode('\0\0\0\3\0\0\0\4\0\0\0\6'), (3,4,6))
+ok((uint32+uint32+uint32).encode((3,4,6)), '\0\0\0\3\0\0\0\4\0\0\0\6')
 ok((uint32 + remaining).decode("\0\0\0\4boo"), (4, "boo"))
+ok((uint32 + remaining).encode((4, "boo")), "\0\0\0\4boo")
+
+smfic_optneg_format = uint32 + uint32 + uint32
 
 class Milter:
     """An abstract base milter."""
     def smfic_optneg(self, version, actions, protocol):
         "Option negotiation."
-        return 'O' + struct.pack('>LLL', version, 0, 0)
+        return 'O' + smfic_optneg_format.encode((version, 0, 0))
 
 decoders = {
     'smfic_mail': asciz_multiple,
     'smfic_rcpt': asciz_multiple,
-    'smfic_optneg': uint32 + uint32 + uint32,
+    'smfic_optneg': smfic_optneg_format,
 }
 
 class Abort(Exception):
     "Raised on SMFIC_ABORT; supposed to reset milter state."
 class Quit(Exception):
     "Raised on SMFIC_QUIT; supposed to close connection."
+
+packet_format = uint32 + remaining
+def empacketize(val):
+    return packet_format.encode((len(val), val))
 
 def dispatch_message(milter, message):
     """Parse a message from the MTA and get a response from the milter.
@@ -113,7 +138,6 @@ def dispatch_message(milter, message):
 
     XXX should this move into the Milter class?
 
-    XXX somewhere we need to empacketize things
     """
     command_code = message[0]  # XXX: 0-length message?
 
@@ -127,10 +151,10 @@ def dispatch_message(milter, message):
     selector = map.get(command_code)
     if selector is None: return smfir.continue_
     args = decoders[selector].decode(message[1:])
-    return getattr(milter, selector)(*args)
+    return empacketize(getattr(milter, selector)(*args))
 
-ok(dispatch_message(Milter(), 'O\0\0\0\2\0\0\0\x3f\0\0\0\x7f'),
-   'O' '\0\0\0\2' '\0\0\0\0' '\0\0\0\0')
+ok(dispatch_message(Milter(), 'O' '\0\0\0\2' '\0\0\0\x3f' '\0\0\0\x7f'),
+   '\0\0\0\x0d' 'O' '\0\0\0\2' '\0\0\0\0' '\0\0\0\0')
 
 class Incomplete(Exception):
     "Raised when you try to parse an incomplete packet."
@@ -142,9 +166,11 @@ def parse_packet(buffer):
     Returns (packetbody, remainingdata) tuple, or raises
     Incomplete.
     """
-    length, contents = (uint32 + remaining).decode(buffer)
+    length, contents = packet_format.decode(buffer)
     if len(contents) < length: raise Incomplete
     return (contents[:length], contents[length:])
+
+ok(parse_packet('\0\0\0\4abcde'), ('abcd', 'e'))
 
 
 ## Top level control of milter protocol.
