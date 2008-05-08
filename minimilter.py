@@ -1,6 +1,20 @@
 #!/usr/bin/python
 """Very simple pure-Python milter implementation.
 
+Sendmail includes a `libmilter` but it has some disadvantages:
+
+- `libmilter` is 2800 lines of C code (according to sloccount) with a
+  poor security record, and its intended use is handling data that's
+  so untrusted that you won't even deliver it as email;
+- 2800 lines, which is 4100 physical lines, is a lot bigger and harder
+  to audit than the 300+ lines in this program;
+- `libmilter` wants to own the main loop of your program and spawn
+  threads; neither of these are particularly compatible with Python,
+  modern versions of Perl, or many other frameworks; and threads are
+  not particularly compatible with good programming practice either,
+  especially in C.  (However, this program uses threads in the same
+  way as `libmilter`.)
+  
 I'm implementing this from Todd Vierling's wonderful protocol
 documentation, 'The Sendmail Milter Protocol, Version 2', version 1.6.
 <http://search.cpan.org/src/AVAR/Sendmail-PMilter-0.96/doc/milter-protocol.txt>
@@ -20,12 +34,11 @@ Mailman lists:
     mlist = MailList.MailList(listname, lock=False)
     addrs = mlist.getRegularMemberKeys() + mlist.getDigestMemberKeys()
 
-This is just a few hours of work.
+At this point, this program represents about six hours of work.
 
 """
 
 import struct, sys, thread, socket, cgitb, StringIO
-cgitb.enable(format='text')
 
 def ok(a, b):
     "One-line unit testing function."
@@ -325,6 +338,7 @@ class RecipMapMilter(Milter):
             return smfir.continue_
 
 if __name__ == '__main__':
+    cgitb.enable(format='text')
     if len(sys.argv) < 3:
         print "usage: %s <mapfile> <portnum>" % (sys.argv[0])
     else:
