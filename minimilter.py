@@ -215,6 +215,7 @@ def loop(input, output, milter_factory):
             message, buf = parse_packet(buf)
         except Incomplete:
             data = input(4096)
+            debug("got %r" % data)
             if not data:
                 return
             buf += data
@@ -227,6 +228,7 @@ def loop(input, output, milter_factory):
         except Quit:
             return
         else:
+            debug("responding with %r" % answer)
             output(answer)
 
 _testresponses = []
