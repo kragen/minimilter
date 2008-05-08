@@ -1,0 +1,71 @@
+got '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00?\x00\x00\x00\x7f\x00\x00\x00\rO\x00\x00\x00\x03\x00\x00\x00?\x00\x00\x00\x7f\x00\x00\x00\x01Q'
+spitting out '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'
+spitting out '\x00\x00\x00\rO\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00'
+got ''
+got '\x00\x00\x00\x01'
+got ''
+listening on ('127.0.0.1', 1234)
+got '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00=\x00\x00\x00\x7f'
+spitting out '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'
+got '\x00\x00\x00VDCj\x00watchdog-qemu-image.local\x00{daemon_name}\x00watchdog-qemu-image.local\x00v\x00Postfix 2.3.8\x00\x00\x00\x00\x18Clocalhost\x004\x00\x00127.0.0.1\x00'
+spitting out 'c'
+spitting out 'c'
+KeyboardInterrupt
+Python 2.4.4: /usr/bin/python
+Thu May  8 12:18:22 2008
+
+A problem occurred in a Python script.  Here is the sequence of
+function calls leading up to the error, in the order they occurred.
+
+ /root/minimilter.py 
+  299         print "usage: %s <mapfile> <portnum>" % (sys.argv[0])
+  300     else:
+  301         recipmap = eval(file(sys.argv[1]).read())
+  302         threaded_server(int(sys.argv[2]),
+  303                         lambda: RecipMapMilter(recipmap))
+RecipMapMilter = <class __main__.RecipMapMilter>
+recipmap = {'<root@watchdog-qemu-image.local>': ['<special@watchdog-qemu-image.local>']}
+
+ /root/minimilter.py in threaded_server(port=1234, milter_factory=<function <lambda>>)
+  260 
+  261     while 1:
+  262         (conn, addr) = sock.accept()
+  263         # XXX is there a chance of resource exhaustion here?
+  264         thread.start_new_thread(socket_loop, (conn, milter_factory))
+conn undefined
+addr = ('127.0.0.1', 2654)
+sock = <socket._socketobject object>
+sock.accept = <bound method _socketobject.accept of <socket._socketobject object>>
+
+ /root/socket.py in accept(self=<socket._socketobject object>)
+  159 
+  160     def accept(self):
+  161         sock, addr = self._sock.accept()
+  162         return _socketobject(_sock=sock), addr
+  163     accept.__doc__ = _realsocket.accept.__doc__
+sock undefined
+addr undefined
+self = <socket._socketobject object>
+self._sock = <socket object, fd=3, family=2, type=1, protocol=0>
+self._sock.accept = <built-in method accept of _socket.socket object>
+KeyboardInterrupt: 
+    __doc__ = 'Program interrupted by user.'
+    __getitem__ = <bound method KeyboardInterrupt.__getitem__ of <exceptions.KeyboardInterrupt instance>>
+    __init__ = <bound method KeyboardInterrupt.__init__ of <exceptions.KeyboardInterrupt instance>>
+    __module__ = 'exceptions'
+    __str__ = <bound method KeyboardInterrupt.__str__ of <exceptions.KeyboardInterrupt instance>>
+    args = ()
+
+The above is a description of an error in a Python program.  Here is
+the original traceback:
+
+Traceback (most recent call last):
+  File "./minimilter.py", line 303, in ?
+    lambda: RecipMapMilter(recipmap))
+  File "./minimilter.py", line 262, in threaded_server
+    (conn, addr) = sock.accept()
+  File "socket.py", line 161, in accept
+    sock, addr = self._sock.accept()
+KeyboardInterrupt
+
+

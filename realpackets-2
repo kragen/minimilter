@@ -1,0 +1,65 @@
+Here's the debug dump from a test connection from Postfix.  The "got
+'...'" and "responding with '...'" lines contain all the data that
+went over the socket; the rest of the debug dump lines explain some
+other internal processing.
+
+The milter is trying to reject the mail to root.
+
+listening on ('127.0.0.1', 1234)
+got '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00=\x00\x00\x00\x7f'
+message 'O', 'O\x00\x00\x00\x02\x00\x00\x00=\x00\x00\x00\x7f'
+got message 'O' => smfic_optneg(2L, 61L, 127L)
+responding with '\x00\x00\x00\rO\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'
+got '\x00\x00\x00VDCj\x00watchdog-qemu-image.local\x00{daemon_name}\x00watchdog-qemu-image.local\x00v\x00Postfix 2.3.8\x00\x00\x00\x00\x18Clocalhost\x004\x00\x00127.0.0.1\x00'
+message 'D', 'DCj\x00watchdog-qemu-image.local\x00{daemon_name}\x00watchdog-qemu-image.local\x00v\x00Postfix 2.3.8\x00'
+responding with '\x00\x00\x00\x01c'
+message 'C', 'Clocalhost\x004\x00\x00127.0.0.1\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x02DH\x00\x00\x00\x1aHthis-is-my-helo-hostname\x00'
+message 'D', 'DH'
+responding with '\x00\x00\x00\x01c'
+message 'H', 'Hthis-is-my-helo-hostname\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00;DM{mail_addr}\x00unauthorizedsender@watchdog-qemu-image.local\x00\x00\x00\x000M<unauthorizedsender@watchdog-qemu-image.local>\x00'
+message 'D', 'DM{mail_addr}\x00unauthorizedsender@watchdog-qemu-image.local\x00'
+responding with '\x00\x00\x00\x01c'
+message 'M', 'M<unauthorizedsender@watchdog-qemu-image.local>\x00'
+got message 'M' => smfic_mail(['<unauthorizedsender@watchdog-qemu-image.local>'],)
+sender is <unauthorizedsender@watchdog-qemu-image.local>
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x004DR{rcpt_addr}\x00watchdogdev@watchdog-qemu-image.local\x00\x00\x00\x00)R<watchdogdev@watchdog-qemu-image.local>\x00\x00\x00\x00:DRi\x00BC2E518008\x00{rcpt_addr}\x00root@watchdog-qemu-image.local\x00\x00\x00\x00"R<root@watchdog-qemu-image.local>\x00'
+message 'D', 'DR{rcpt_addr}\x00watchdogdev@watchdog-qemu-image.local\x00'
+responding with '\x00\x00\x00\x01c'
+message 'R', 'R<watchdogdev@watchdog-qemu-image.local>\x00'
+got message 'R' => smfic_rcpt(['<watchdogdev@watchdog-qemu-image.local>'],)
+recipient is <watchdogdev@watchdog-qemu-image.local>
+responding with '\x00\x00\x00\x01c'
+message 'D', 'DRi\x00BC2E518008\x00{rcpt_addr}\x00root@watchdog-qemu-image.local\x00'
+responding with '\x00\x00\x00\x01c'
+message 'R', 'R<root@watchdog-qemu-image.local>\x00'
+got message 'R' => smfic_rcpt(['<root@watchdog-qemu-image.local>'],)
+recipient is <root@watchdog-qemu-image.local>
+responding with '\x00\x00\x00\x01r'
+got '\x00\x00\x00\x0fDLi\x00BC2E518008\x00\x00\x00\x003LFrom\x00unauthorizedsender@watchdog-qemu-image.local\x00'
+message 'D', 'DLi\x00BC2E518008\x00'
+responding with '\x00\x00\x00\x01c'
+message 'L', 'LFrom\x00unauthorizedsender@watchdog-qemu-image.local\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x0fDLi\x00BC2E518008\x00\x00\x00\x00HLTo\x00watchdog@watchdog-qemu-image.local,\n\troot@watchdog-qemu-image.local\x00\x00\x00\x00\x0fDLi\x00BC2E518008\x00\x00\x00\x00!LSubject\x00This is my subject line\x00\x00\x00\x00\x0fDLi\x00BC2E518008\x00\x00\x00\x00BLMessage-Id\x00<20080508194142.BC2E518008@watchdog-qemu-image.local>\x00'
+message 'D', 'DLi\x00BC2E518008\x00'
+responding with '\x00\x00\x00\x01c'
+message 'L', 'LTo\x00watchdog@watchdog-qemu-image.local,\n\troot@watchdog-qemu-image.local\x00'
+responding with '\x00\x00\x00\x01c'
+message 'D', 'DLi\x00BC2E518008\x00'
+responding with '\x00\x00\x00\x01c'
+message 'L', 'LSubject\x00This is my subject line\x00'
+responding with '\x00\x00\x00\x01c'
+message 'D', 'DLi\x00BC2E518008\x00'
+responding with '\x00\x00\x00\x01c'
+message 'L', 'LMessage-Id\x00<20080508194142.BC2E518008@watchdog-qemu-image.local>\x00'
+responding with '\x00\x00\x00\x01c'
+got '\x00\x00\x00\x01A\x00\x00\x00\x01A\x00\x00\x00\x01Q'
+message 'A', 'A'
+message 'A', 'A'
+message 'Q', 'Q'
+connection closed
