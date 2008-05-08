@@ -20,7 +20,7 @@ Mailman lists:
     mlist = MailList.MailList(listname, lock=False)
     addrs = mlist.getRegularMemberKeys() + mlist.getDigestMemberKeys()
 
-I implemented this in three hours one morning.
+This is just a few hours of work.
 
 """
 
@@ -40,6 +40,10 @@ class smfir:
     discard, addheader, chgheader, progress, quarantine = 'dhmpq'
     reject, tempfail, replycode = 'rty'
 
+class smfic:
+    """Namespace for command codes."""
+    mail, rcpt, optneg, quit, abort = 'MROQA'
+
 
 ## Decoding packet contents: generic data handling.
 
@@ -52,7 +56,7 @@ class smfir:
 class TooManyValues(Exception):
     "Signals that you've asked a Format to encode more things than it can."
 class Incomplete(Exception):
-    "Raised when you try to parse an incomplete data structure."
+    "Raised when you try to decode an incomplete data structure."
 
 class Format:
     "Base class for parsing objects."
@@ -107,14 +111,18 @@ class _uint32(Format):
 uint32 = _uint32()
 
 ok(uint32.decode('\0\0\0\3'), (3,))
-ok((uint32+uint32).decode('\0\0\0\3\0\0\0\4'), (3,4))
-ok((uint32+uint32+uint32).decode('\0\0\0\3\0\0\0\4\0\0\0\6'), (3,4,6))
-ok((uint32+uint32+uint32).encode((3,4,6)), '\0\0\0\3\0\0\0\4\0\0\0\6')
+ok((uint32+uint32).decode('\0\0\0\3' '\0\0\0\4'), (3,4))
+ok((uint32+uint32+uint32).decode('\0\0\0\3' '\0\0\0\4' '\0\0\0\6'), (3,4,6))
+ok((uint32+uint32+uint32).encode((3,4,6)), '\0\0\0\3' '\0\0\0\4' '\0\0\0\6')
 ok((uint32 + remaining).decode("\0\0\0\4boo"), (4, "boo"))
 ok((uint32 + remaining).encode((4, "boo")), "\0\0\0\4boo")
 
 
 ## Decoding packet contents: milter protocol data formats.
+
+# I follow Vierling's terminology: the globs sent over the socket
+# including the leading byte count is a "packet", and the content of
+# such a glob (which begins with an opcode byte) is a "message".
 
 smfic_optneg_format = uint32 + uint32 + uint32
 
@@ -150,18 +158,21 @@ def dispatch_message(milter, message):
     command_code = message[0]  # XXX: 0-length message?
 
     # XXX move these into the Milter object?
-    if command_code == 'A': raise Abort # XXX: do the same for SMFIC_BODYEOB?
-    if command_code == 'Q': raise Quit
+    if command_code == smfic.abort:
+        raise Abort # XXX: do the same for SMFIC_BODYEOB?
+    if command_code == smfic.quit:
+        raise Quit
 
-    map = {'M': 'smfic_mail',
-           'R': 'smfic_rcpt',
-           'O': 'smfic_optneg'}
+    map = {smfic.mail: 'smfic_mail',
+           smfic.rcpt: 'smfic_rcpt',
+           smfic.optneg: 'smfic_optneg'}
     selector = map.get(command_code)
     if selector is None: return smfir.continue_
     args = decoders[selector].decode(message[1:])
     #print "got message %r => %s%s" % (command_code, selector, args)
     return empacketize(getattr(milter, selector)(*args))
 
+ok(smfic.optneg, 'O')
 ok(dispatch_message(Milter(), 'O' '\0\0\0\2' '\0\0\0\x3f' '\0\0\0\x7f'),
    '\0\0\0\x0d' 'O' '\0\0\0\2' '\0\0\0\0' '\0\0\0\0')
 
@@ -211,12 +222,13 @@ _testresponses = []
 _source = StringIO.StringIO(
     # this is a little dodgy because we wouldn't ever really get
     # multiple smfic_optneg packets
-    empacketize("O" + smfic_optneg_format.encode((2, 0x3f, 0x7f))) +
-    empacketize("O" + smfic_optneg_format.encode((3, 0x3f, 0x7f))) +
-    empacketize("Q"))
+    empacketize(smfic.optneg + smfic_optneg_format.encode((2, 0x3f, 0x7f))) +
+    empacketize(smfic.optneg + smfic_optneg_format.encode((3, 0x3f, 0x7f))) +
+    empacketize(smfic.quit))
 loop(_source.read, _testresponses.append, Milter)
-ok(_testresponses, [empacketize("O" + smfic_optneg_format.encode((2, 0, 0))),
-                    empacketize("O" + smfic_optneg_format.encode((3, 0, 0)))])
+ok(_testresponses, [
+    empacketize(smfic.optneg + smfic_optneg_format.encode((2, 0, 0))),
+    empacketize(smfic.optneg + smfic_optneg_format.encode((3, 0, 0)))])
 
 # tests to make sure unexpected EOF is handled in some way other than
 # just spinning.
