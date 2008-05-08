@@ -27,43 +27,13 @@ I implemented this in three hours one morning.
 import struct, sys, thread, socket, cgitb
 cgitb.enable(format='text')
 
+## basic constants.
+
 class smfir:
     """Namespace for reply codes."""
     addrcpt, delrcpt, accept, replbody, continue_ = '+-abc'
     discard, addheader, chgheader, progress, quarantine = 'dhmpq'
     reject, tempfail, replycode = 'rty'
-
-class Milter:
-    """An abstract base milter."""
-    def smfic_optneg(self, version, actions, protocol):
-        "Option negotiation."
-        return 'O' + struct.pack('>LLL', version, 0, 0)
-
-class RecipMapMilter(Milter):
-    """A simple milter that filters on allowed senders for
-    some recipients.
-
-    For recipients not in the map, all senders are allowed.
-
-    For recipients in the map, only specified senders are
-    allowed.
-
-    """
-    def __init__(self, recipmap):
-        self.recipmap = recipmap
-    def smfic_mail(self, strings):
-        "Respond to a MAIL FROM: command."
-        self.sender = strings[0]
-        print "sender is", self.sender
-        return smfir.continue_
-    def smfic_rcpt(self, strings):
-        "Respond to an RCPT TO: command."
-        recip = strings[0]
-        print "recipient is", recip
-        if recip in self.recipmap and self.sender not in self.recipmap[recip]:
-            return smfir.reject
-        else:
-            return smfir.continue_
 
 ## Decoding packet contents.
 
@@ -108,6 +78,13 @@ class _remaining(Parser):
     def __call__(self, val): return (val,)
 remaining = _remaining()
 
+class Milter:
+    """An abstract base milter."""
+    def smfic_optneg(self, version, actions, protocol):
+        "Option negotiation."
+        return 'O' + struct.pack('>LLL', version, 0, 0)
+
+
 ok((uint32 + remaining)("\0\0\0\4boo"), (4, "boo"))
 
 decoders = {
@@ -127,6 +104,8 @@ def dispatch_message(milter, message):
     The message should already have its initial `len` field removed.
 
     XXX should this move into the Milter class?
+
+    XXX somewhere we need to empacketize things
     """
     command_code = message[0]  # XXX: 0-length message?
 
@@ -197,6 +176,35 @@ def threaded_server(port, milter_factory):
         # XXX is there a chance of resource exhaustion here?
         thread.start_new_thread(socket_loop, (conn, milter_factory))
         del conn                        # for GC
+
+## My specific milter.
+# Eventually this should go into a file of its own.
+
+class RecipMapMilter(Milter):
+    """A simple milter that filters on allowed senders for
+    some recipients.
+
+    For recipients not in the map, all senders are allowed.
+
+    For recipients in the map, only specified senders are
+    allowed.
+
+    """
+    def __init__(self, recipmap):
+        self.recipmap = recipmap
+    def smfic_mail(self, strings):
+        "Respond to a MAIL FROM: command."
+        self.sender = strings[0]
+        print "sender is", self.sender
+        return smfir.continue_
+    def smfic_rcpt(self, strings):
+        "Respond to an RCPT TO: command."
+        recip = strings[0]
+        print "recipient is", recip
+        if recip in self.recipmap and self.sender not in self.recipmap[recip]:
+            return smfir.reject
+        else:
+            return smfir.continue_
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
