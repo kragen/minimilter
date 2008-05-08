@@ -192,8 +192,10 @@ def loop(input, output, milter_factory):
         try:
             message, buf = parse_packet(buf)
         except Incomplete:
-            buf += input(4096)
-            # XXX what about unexpected EOF?
+            data = input(4096)
+            if not data:
+                return
+            buf += data
             continue
 
         try:
@@ -206,13 +208,21 @@ def loop(input, output, milter_factory):
             output(answer)
 
 _testresponses = []
-source = StringIO.StringIO(
+_source = StringIO.StringIO(
+    # this is a little dodgy because we wouldn't ever really get
+    # multiple smfic_optneg packets
     empacketize("O" + smfic_optneg_format.encode((2, 0x3f, 0x7f))) +
     empacketize("O" + smfic_optneg_format.encode((3, 0x3f, 0x7f))) +
     empacketize("Q"))
-loop(source.read, _testresponses.append, Milter)
+loop(_source.read, _testresponses.append, Milter)
 ok(_testresponses, [empacketize("O" + smfic_optneg_format.encode((2, 0, 0))),
                     empacketize("O" + smfic_optneg_format.encode((3, 0, 0)))])
+
+# tests to make sure unexpected EOF is handled in some way other than
+# just spinning.
+loop(StringIO.StringIO("").read, "expect no responses", Milter)
+loop(StringIO.StringIO("\0\0\0\1").read, "expect no responses", Milter)
+
 
 def socket_loop(sock, milter_factory):
     "Run one or more milters on an open socket connection."
