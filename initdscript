@@ -1,0 +1,47 @@
+#! /bin/sh
+set -e
+
+# This program goes in /etc/init.d/mailman-milter.
+# copied-and-pasted from Etch's /etc/init.d/ssh
+
+minimilter=/usr/local/bin/minimilter.py
+recipmap=/usr/local/minimilter/recipmap
+port=1112
+
+test -x "$minimilter" || exit 0
+
+[ -f /etc/default/minimilter ] && . /etc/default/minimilter
+
+case "$1" in
+  start)
+        echo -n "Starting minimilter: minimilter"
+	start-stop-daemon --start --quiet \
+            --pidfile /var/run/minimilter.pid \
+            --chuid mailman \
+            --background \
+            --exec "$minimilter" -- "$recipmap" "$port" XXXlogfile
+        echo "."
+	;;
+  stop)
+        echo -n "Stopping minimilter: minimilter"
+	start-stop-daemon --stop --quiet \
+            --oknodo \
+            --retry 30 \
+            --pidfile /var/run/minimilter.pid
+        echo "."
+	;;
+
+  reload|force-reload|restart)
+        echo -n "Restarting minimilter: minimilter:"
+	start-stop-daemon --stop --quiet --oknodo --pidfile /var/run/minimilter.pid
+	check_for_no_start
+	start-stop-daemon --start --quiet --pidfile /var/run/sshd.pid --exec /usr/sbin/sshd -- $SSHD_OPTS
+	echo "."
+	;;
+
+  *)
+	echo "Usage: /etc/init.d/ssh {start|stop|reload|force-reload|restart}"
+	exit 1
+esac
+
+exit 0

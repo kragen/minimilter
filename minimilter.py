@@ -36,6 +36,11 @@ Mailman lists:
 
 At this point, this program represents about six hours of work.
 
+Problems:
+
+- the program doesn't recognize that <kragen-tol@lists.canonical.org>
+  is the same as <kragen-tol@canonical.org> and just <kragen-tol>.
+
 """
 
 import struct, sys, thread, socket, cgitb, StringIO
@@ -44,9 +49,11 @@ def ok(a, b):
     "One-line unit testing function."
     assert a == b, (a, b)
 
-def debug(msg): print msg
+def log(msg):
+    print msg
+    sys.stdout.flush()
 def debug(msg): pass
-
+#debug = log
 
 ## Basic constants.
 
@@ -288,7 +295,7 @@ ok(_testresponses, ['', empacketize(smfir.continue_)])
 def socket_loop(sock, milter_factory):
     "Run one or more milters on an open socket connection."
     loop(sock.recv, sock.send, milter_factory)
-    print "connection closed"
+    log("connection closed")
     sock.close()
 
 def threaded_server(port, milter_factory):
@@ -299,7 +306,7 @@ def threaded_server(port, milter_factory):
     sock.bind(sockaddr)
     sock.listen(5)
 
-    print "listening on", sockaddr
+    log("listening on %s" % (sockaddr,))
 
     while 1:
         (conn, addr) = sock.accept()
@@ -326,22 +333,26 @@ class RecipMapMilter(Milter):
     def smfic_mail(self, strings):
         "Respond to a MAIL FROM: command."
         self.sender = strings[0]
-        print "sender is", self.sender
+        log("sender is %s" % self.sender)
         return smfir.continue_
     def smfic_rcpt(self, strings):
         "Respond to an RCPT TO: command."
         recip = strings[0]
-        print "recipient is", recip
+        log("recipient is %s" % recip)
         if recip in self.recipmap and self.sender not in self.recipmap[recip]:
             return smfir.reject
         else:
             return smfir.continue_
 
 if __name__ == '__main__':
-    cgitb.enable(format='text')
-    if len(sys.argv) < 3:
-        print "usage: %s <mapfile> <portnum>" % (sys.argv[0])
+    try:
+        _, recipmapname, port, logfile = sys.argv
+    except:
+        sys.stderr.write("usage: %s <mapfile> <portnum> <logfile>\n"
+                         % (sys.argv[0]))
     else:
-        recipmap = eval(file(sys.argv[1]).read())
-        threaded_server(int(sys.argv[2]),
-                        lambda: RecipMapMilter(recipmap))
+        sys.stdout = file(logfile, 'a')
+        cgitb.enable(format='text')
+
+        recipmap = eval(file(recipmapname).read())
+        threaded_server(int(port), lambda: RecipMapMilter(recipmap))
