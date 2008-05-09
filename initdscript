@@ -7,6 +7,7 @@ set -e
 minimilter=/usr/local/bin/minimilter.py
 recipmap=/usr/local/minimilter/recipmap
 port=1112
+logfile=/var/log/minimilter
 
 test -x "$minimilter" || exit 0
 
@@ -19,7 +20,7 @@ case "$1" in
             --pidfile /var/run/minimilter.pid \
             --chuid mailman \
             --background \
-            --exec "$minimilter" -- "$recipmap" "$port" XXXlogfile
+            --exec "$minimilter" -- "$recipmap" "$port" "$logfile"
         echo "."
 	;;
   stop)

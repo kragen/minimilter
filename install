@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+cp minimilter.py /usr/local/bin
+
+initscript=/etc/init.d/mailman-milter
+cp initdscript "$initscript"
+for level in 2 3 4 5; do
+    ln -s "$initscript" /etc/rc$level.d/S20mailman-milter
+done
+for level in 0 6; do
+    ln -s "$initscript" /etc/rc$level.d/K20mailman-milter
+done
+
+touch /var/log/minimilter
+chown mailman:mailman /var/log/minimilter
+
+# default is to block no mail
+echo '{}' > /usr/local/minimilter/recipmap
+
+echo "OK.  Now you need to edit /etc/postfix/main.cf:"
+echo "    smtpd_milters = inet:localhost:1112"
+echo "    milter_default_action = tempfail"
