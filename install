@@ -15,6 +15,7 @@ touch /var/log/minimilter
 chown mailman:mailman /var/log/minimilter
 
 # default is to block no mail
+mkdir -p /usr/local/minimilter
 echo '{}' > /usr/local/minimilter/recipmap
 
 echo "OK.  Now you need to edit /etc/postfix/main.cf:"

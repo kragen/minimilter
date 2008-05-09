@@ -40,6 +40,9 @@ Problems:
 
 - the program doesn't recognize that <kragen-tol@lists.canonical.org>
   is the same as <kragen-tol@canonical.org> and just <kragen-tol>.
+- it doesn't rotate its logs
+- it doesn't use syslog
+- it's not sure about whether it's called mailman-milter or minimilter
 
 """
 

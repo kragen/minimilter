@@ -17,6 +17,7 @@ case "$1" in
   start)
         echo -n "Starting minimilter: minimilter"
 	start-stop-daemon --start --quiet \
+            --make-pidfile \
             --pidfile /var/run/minimilter.pid \
             --chuid mailman \
             --background \
@@ -33,15 +34,11 @@ case "$1" in
 	;;
 
   reload|force-reload|restart)
-        echo -n "Restarting minimilter: minimilter:"
-	start-stop-daemon --stop --quiet --oknodo --pidfile /var/run/minimilter.pid
-	check_for_no_start
-	start-stop-daemon --start --quiet --pidfile /var/run/sshd.pid --exec /usr/sbin/sshd -- $SSHD_OPTS
-	echo "."
+        $0 stop; sleep 1; $0 start
 	;;
 
   *)
-	echo "Usage: /etc/init.d/ssh {start|stop|reload|force-reload|restart}"
+	echo "Usage: /etc/init.d/mailman-milter {start|stop|reload|force-reload|restart}"
 	exit 1
 esac
 
