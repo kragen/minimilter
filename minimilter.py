@@ -3,7 +3,7 @@
 
 Sendmail includes a `libmilter` but it has some disadvantages:
 
-- `libmilter` is 2800 lines of C code (according to sloccount) with a
+- `libmilter` is 2800 lines of C code (according to `sloccount`) with a
   poor security record, and its intended use is handling data that's
   so untrusted that you won't even deliver it as email;
 - 2800 lines, which is 4100 physical lines, is a lot bigger and harder
@@ -19,30 +19,52 @@ I'm implementing this from Todd Vierling's wonderful protocol
 documentation, 'The Sendmail Milter Protocol, Version 2', version 1.6.
 <http://search.cpan.org/src/AVAR/Sendmail-PMilter-0.96/doc/milter-protocol.txt>
 
-I'm going to test it against Postfix, using something like this:
+I use it with Postfix 2.3 with this configuration:
 
-    smtpd_milters = inet:localhost:6869
+    smtpd_milters = inet:localhost:1112
     milter_default_action = tempfail
 
 See <http://www.postfix.org/MILTER_README.html> for details.
 
 My own purposes are fairly simple, so this is a very limited
-implementation.  I am thinking about checking addresses against
-Mailman lists:
+implementation.
+
+At this point, this program represents about six hours of work.
+
+Problems and Future Work
+------------------------
+
+- the program doesn't recognize that `<kragen-tol@lists.canonical.org>`
+  is the same as `<kragen-tol@canonical.org>` and just `<kragen-tol>`.
+- it doesn't rotate its logs
+- it doesn't use syslog
+- it's not sure about whether it's called mailman-milter or minimilter
+- it stores its configuration file in `/usr/local/minimilter` instead of
+  `/etc/minimilter`
+- it uses its own `ok` instead of doctest.
+- it uses `while 1:` instead of `while True:`.
+- uses `input` as a parameter.
+
+Solution to the syslog problem suggested at
+<http://www.mechanicalcat.net/richard/log/Python/Simple_usage_of_Python_s_logging_module>:
+
+    import logging, logging.handlers
+
+    logger = logging.getLogger('a_name')
+    hdlr = logging.handlers.SysLogHandler(
+        facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+    formatter = logging.Formatter('%(filename)s: %(levelname)s: %(message)s')
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
+
+This doesn't seem to work though; the logger just discards messages
+passed to it.
+
+I am thinking about checking addresses against Mailman lists:
 
     from Mailman import MailList
     mlist = MailList.MailList(listname, lock=False)
     addrs = mlist.getRegularMemberKeys() + mlist.getDigestMemberKeys()
-
-At this point, this program represents about six hours of work.
-
-Problems:
-
-- the program doesn't recognize that <kragen-tol@lists.canonical.org>
-  is the same as <kragen-tol@canonical.org> and just <kragen-tol>.
-- it doesn't rotate its logs
-- it doesn't use syslog
-- it's not sure about whether it's called mailman-milter or minimilter
 
 """
 
