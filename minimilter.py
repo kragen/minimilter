@@ -75,7 +75,7 @@ def ok(a, b):
     assert a == b, (a, b)
 
 def log(msg):
-    print "%s %s" % (time, msg)
+    print "%s %s" % (time.time(), msg)
     sys.stdout.flush()
 def debug(msg): pass
 #debug = log
