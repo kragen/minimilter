@@ -361,10 +361,9 @@ class RecipMapMilter(Milter):
         XXX having to call this explicitly is bug-prone.
 
         """
-        if addr and addr[0] != '<':
-            return '<%s>' % addr
-        else:
-            return addr
+        if not addr.startswith('<'): addr = '<' + addr
+        if not addr.endswith('>'): addr = addr + '>'
+        return addr
     def smfic_mail(self, strings):
         "Respond to a MAIL FROM: command."
         self.sender = self.normalize_addr(strings[0])
@@ -388,12 +387,14 @@ def _testRecipMapMilter():
     ok(milter.smfic_mail(['<foo@bar>']), smfir.continue_)
     ok(milter.smfic_rcpt(['<somebody@somewhere>']), smfir.reject)
     ok(milter.smfic_rcpt(['<elsebody@somewhere>']), smfir.continue_)
+
     # authorized case
     milter = RecipMapMilter(
         {'<somebody@somewhere>': ['<privileged@elsewhere>']})
     ok(milter.smfic_mail(['<privileged@elsewhere>']), smfir.continue_)
     ok(milter.smfic_rcpt(['<somebody@somewhere>']), smfir.continue_)
     ok(milter.smfic_rcpt(['<elsebody@somewhere>']), smfir.continue_)
+
     # missing angle brackets case.  If a spammer's lousy SMTP
     # implementation fails to supply angle brackets, Postfix
     # 2.3.whatever passes along their lack of angle brackets to the
@@ -408,6 +409,12 @@ def _testRecipMapMilter():
     ok(milter.smfic_mail(['privileged@elsewhere']), smfir.continue_)
     ok(milter.smfic_rcpt(['somebody@somewhere']), smfir.continue_)
     ok(milter.smfic_rcpt(['elsebody@somewhere']), smfir.continue_)
+
+    # Second angle bracket missing case.
+    milter = RecipMapMilter(
+        {'<somebody@somewhere>': ['<privileged@elsewhere>']})
+    ok(milter.smfic_mail(['foo@bar']), smfir.continue_)
+    ok(milter.smfic_rcpt(['somebody@somewhere>']), smfir.reject)
 
 def discard_stdout(thunk):
     "Temporarily redirect stdout to a bit bucket for testing."
