@@ -355,14 +355,24 @@ class RecipMapMilter(Milter):
     """
     def __init__(self, recipmap):
         self.recipmap = recipmap
+    def normalize_addr(self, addr):
+        """Add angle brackets to an address if they're missing.
+
+        XXX having to call this explicitly is bug-prone.
+
+        """
+        if addr and addr[0] != '<':
+            return '<%s>' % addr
+        else:
+            return addr
     def smfic_mail(self, strings):
         "Respond to a MAIL FROM: command."
-        self.sender = strings[0]
+        self.sender = self.normalize_addr(strings[0])
         log("sender is %s" % self.sender)
         return smfir.continue_
     def smfic_rcpt(self, strings):
         "Respond to an RCPT TO: command."
-        recip = strings[0]
+        recip = self.normalize_addr(strings[0])
         log("recipient is %s" % recip)
         if recip in self.recipmap and self.sender not in self.recipmap[recip]:
             log("rejecting recipient %s" % recip)
@@ -370,6 +380,43 @@ class RecipMapMilter(Milter):
         else:
             log("accepting recipient %s" % recip)
             return smfir.continue_
+
+def _testRecipMapMilter():
+    # unauthorized case
+    milter = RecipMapMilter(
+        {'<somebody@somewhere>': ['<privileged@elsewhere>']})
+    ok(milter.smfic_mail(['<foo@bar>']), smfir.continue_)
+    ok(milter.smfic_rcpt(['<somebody@somewhere>']), smfir.reject)
+    ok(milter.smfic_rcpt(['<elsebody@somewhere>']), smfir.continue_)
+    # authorized case
+    milter = RecipMapMilter(
+        {'<somebody@somewhere>': ['<privileged@elsewhere>']})
+    ok(milter.smfic_mail(['<privileged@elsewhere>']), smfir.continue_)
+    ok(milter.smfic_rcpt(['<somebody@somewhere>']), smfir.continue_)
+    ok(milter.smfic_rcpt(['<elsebody@somewhere>']), smfir.continue_)
+    # missing angle brackets case.  If a spammer's lousy SMTP
+    # implementation fails to supply angle brackets, Postfix
+    # 2.3.whatever passes along their lack of angle brackets to the
+    # milter.  The milter protocol is lousy through and through.
+    milter = RecipMapMilter(
+        {'<somebody@somewhere>': ['<privileged@elsewhere>']})
+    ok(milter.smfic_mail(['foo@bar']), smfir.continue_)
+    ok(milter.smfic_rcpt(['somebody@somewhere']), smfir.reject)
+    ok(milter.smfic_rcpt(['elsebody@somewhere']), smfir.continue_)
+    milter = RecipMapMilter(
+        {'<somebody@somewhere>': ['<privileged@elsewhere>']})
+    ok(milter.smfic_mail(['privileged@elsewhere']), smfir.continue_)
+    ok(milter.smfic_rcpt(['somebody@somewhere']), smfir.continue_)
+    ok(milter.smfic_rcpt(['elsebody@somewhere']), smfir.continue_)
+
+def discard_stdout(thunk):
+    "Temporarily redirect stdout to a bit bucket for testing."
+    old_stdout = sys.stdout
+    sys.stdout = StringIO.StringIO()
+    try: thunk()
+    finally: sys.stdout = old_stdout
+
+discard_stdout(_testRecipMapMilter)
 
 if __name__ == '__main__':
     try:
