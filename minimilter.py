@@ -68,14 +68,14 @@ I am thinking about checking addresses against Mailman lists:
 
 """
 
-import struct, sys, thread, socket, cgitb, StringIO
+import struct, sys, thread, socket, cgitb, StringIO, time
 
 def ok(a, b):
     "One-line unit testing function."
     assert a == b, (a, b)
 
 def log(msg):
-    print msg
+    print "%s %s" % (time, msg)
     sys.stdout.flush()
 def debug(msg): pass
 #debug = log
@@ -365,8 +365,10 @@ class RecipMapMilter(Milter):
         recip = strings[0]
         log("recipient is %s" % recip)
         if recip in self.recipmap and self.sender not in self.recipmap[recip]:
+            log("rejecting recipient %s" % recip)
             return smfir.reject
         else:
+            log("accepting recipient %s" % recip)
             return smfir.continue_
 
 if __name__ == '__main__':
