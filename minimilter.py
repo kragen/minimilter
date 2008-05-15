@@ -352,6 +352,8 @@ class RecipMapMilter(Milter):
     For recipients in the map, only specified senders are
     allowed.
 
+    This milter is not case-sensitive.
+    
     """
     def __init__(self, recipmap):
         self.recipmap = recipmap
@@ -363,7 +365,7 @@ class RecipMapMilter(Milter):
         """
         if not addr.startswith('<'): addr = '<' + addr
         if not addr.endswith('>'): addr = addr + '>'
-        return addr
+        return addr.lower()
     def smfic_mail(self, strings):
         "Respond to a MAIL FROM: command."
         self.sender = self.normalize_addr(strings[0])
@@ -415,6 +417,13 @@ def _testRecipMapMilter():
         {'<somebody@somewhere>': ['<privileged@elsewhere>']})
     ok(milter.smfic_mail(['foo@bar']), smfir.continue_)
     ok(milter.smfic_rcpt(['somebody@somewhere>']), smfir.reject)
+
+    # case-smashing case
+    milter = RecipMapMilter(
+        {'<somebody@somewhere>': ['<privileged@elsewhere>']})
+    ok(milter.smfic_mail(['<foo@bar>']), smfir.continue_)
+    ok(milter.smfic_rcpt(['<someBody@soMewhere>']), smfir.reject)
+    ok(milter.smfic_rcpt(['<elseBody@soMewhere>']), smfir.continue_)
 
 def discard_stdout(thunk):
     "Temporarily redirect stdout to a bit bucket for testing."
