@@ -1,0 +1,65 @@
+<html><head><title> minimilter</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+
+<h1> minimilter</h1>
+<p> <link rel="stylesheet" href="../style.css" /> 
+</p>
+<p>This is in HTML at <a href="http://canonical.org/~kragen/sw/minimilter.html">http://canonical.org/~kragen/sw/minimilter.html</a>.
+</p>
+<p>This is a very simple <a href="https://www.milter.org/">milter</a> implementation
+   in pure Python, including a sample milter.  I'm using this to filter
+   spam under Postfix on panacea.canonical.org, which is Bad and Wrong
+   for several reasons:
+</p>
+<ol>
+ <li>
+     I could do the same thing more easily with sender and recipient
+        restrictions.
+ </li>
+
+ <li>
+     Postfix's &quot;policy service&quot; interface is about a thousand times
+        saner than the Milter interface, and performs the same job.
+        Writing to the Milter interface does mean that you could, in
+        theory, use this with other MTAs that support milters.
+ </li>
+</ol>
+
+<h2> About Milters</h2>
+<p>Milters are a way to reject or modify mail before it goes into the
+   mail queue.  I care about this because it lets me bounce spam to its
+   real sender, not the forged from-address on the mail, so I don't
+   become part of the backscatter problem.
+</p>
+<p>MTAs that support milters include
+   <a href="http://www.sendmail.org/">Sendmail</a>,
+   <a href="http://www.postfix.org">Postfix</a>, and
+   <a href="http://smtpd.develooper.com/">qpsmtpd</a>.
+</p>
+<p>Sendmail includes <code>libmilter</code>, which lets you write milters in C.
+</p>
+<p>I'm using the sample milter to bounce unauthorized mail to some
+   Mailman mailing lists, on a machine with Postfix, so that our server
+   doesn't generate backscatter.  I'm probably going to switch away from
+   it shortly because it turns out Postfix has a built-in feature that
+   does more or less the same thing.
+</p>
+
+<h2> About Backscatter</h2>
+<p>Backscatter is when spam sent from a forged <code>From</code> address gets
+   bounced back to that address, effectively turning the spam's first
+   recipient into an inadvertent spam source.  To avoid creating
+   backscatter, don't bounce mail after accepting it; instead, refuse the
+   mail at SMTP-time.
+</p>
+
+<h2> Getting it</h2>
+<pre><code>git clone http://canonical.org/~kragen/mailman-milter.git
+</code></pre>
+<h2> Me</h2>
+<p>Kragen Javier Sitaker <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#107;&#114;&#97;&#103;&#101;&#110;&#64;&#99;&#97;&#110;&#111;&#110;&#105;&#99;&#97;&#108;&#46;&#111;&#114;&#103;">&#107;&#114;&#97;&#103;&#101;&#110;&#64;&#99;&#97;&#110;&#111;&#110;&#105;&#99;&#97;&#108;&#46;&#111;&#114;&#103;</a> 
+</p>
+
+</body></html>
